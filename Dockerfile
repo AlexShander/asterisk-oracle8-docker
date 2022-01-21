@@ -1,0 +1,79 @@
+FROM oraclelinux:8.5 as build
+
+RUN dnf -y in --nogpgcheck https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm && \
+    yum -y groupinstall "Development Tools" && \
+    dnf config-manager --set-enabled ol8_codeready_builder && \
+    dnf -y install wget curl mutt unzip  && \
+    dnf -y install git svn patch gcc gcc-c++ ncurses-devel \
+    libxml2-devel sqlite-devel unixODBC unixODBC-devel libtool-ltdl libtool-ltdl-devel \
+    libtiff-devel libuuid-devel jansson-devel pjproject-devel ImageMagick ghostscript \
+    openssl-devel bzip2  mariadb-connector-odbc libedit-devel libcurl-devel libubsan lua lua-devel && \
+    dnf clean all
+
+COPY asterisk-18-current.tar.gz /usr/src
+
+WORKDIR /usr/src
+
+RUN cd /usr/src && mkdir -p /usr/src/asterisk && \
+    tar -xf asterisk-18-current.tar.gz -C ./asterisk --strip-components=1 && \
+    cd /usr/src/asterisk/ \
+    &&  ./configure NOISY_BUILD=yes --libdir=/usr/lib64 --without-dahdi --without-pri --without-gtk2 \
+    --without-radius --without-x11 --without-speex --with-pjproject-bundled && \
+    sed -i 's/30\.30/50.50/g' menuselect/menuselect.c && make menuselect.makeopts
+
+COPY prepare-menuselect.sh /usr/src/asterisk/prepare-menuselect.sh
+
+COPY options.conf /usr/src/options.conf
+
+ARG VERSION=18.9.0
+
+RUN chmod +x /usr/src/asterisk/prepare-menuselect.sh && cd /usr/src/asterisk && \
+    ./prepare-menuselect.sh && contrib/scripts/get_mp3_source.sh && \
+    make && make install && make basic-pbx && \
+    groupadd  --gid 1001 asterisk && useradd --gid 1001 --uid 1001 asterisk && \
+    curl http://asterisk.hosting.lv/bin/codec_g729-ast180-gcc4-glibc-x86_64-pentium4.so -o /usr/lib64/asterisk/modules/codec_g729-ast180-gcc4-glibc-x86_64-pentium4.so && \
+    sed -i '/; Codecs/a load = codec_g729-ast180-gcc4-glibc-x86_64-pentium4.so' /etc/asterisk/modules.conf && \
+    chown asterisk:asterisk -R /usr/lib64/asterisk && \
+    chown asterisk:asterisk -R /var/lib/asterisk && \
+    chown asterisk:asterisk -R /var/spool/asterisk && \
+    chown asterisk:asterisk -R /etc/asterisk && \
+    chown asterisk:asterisk /usr/sbin/asterisk && \
+    chown asterisk:asterisk -R /var/log/asterisk && \
+    mkdir -p /usr/src/install && \
+    tar -cf /usr/src/install_asterisk.tar \
+    /usr/share/man/man8/astdb2bdb.8 \
+    /usr/share/man/man8/astdb2sqlite3.8 \
+    /usr/share/man/man8/asterisk.8 \
+    /usr/share/man/man8/astgenkey.8 \
+    /usr/share/man/man8/autosupport.8 \
+    /usr/share/man/man8/safe_asterisk.8 \
+    /usr/lib64/asterisk \
+    /usr/lib64/libasteriskpj.so.2 \
+    /usr/lib64/libasteriskssl.so.1 \
+    /usr/lib64/libasteriskpj.so \
+    /usr/lib64/libasteriskssl.so \ 
+    /var/lib/asterisk \
+    /var/log/asterisk \
+    /var/spool/asterisk \
+    /etc/asterisk \
+    /usr/sbin/asterisk && \
+    tar xf /usr/src/install_asterisk.tar -C /usr/src/install && rm /usr/src/install_asterisk.tar && ls -al /usr/src/install
+
+
+FROM oraclelinux:8.5
+
+RUN dnf -y in --nogpgcheck https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm && \
+    dnf config-manager --set-enabled ol8_codeready_builder && \
+    dnf -y install wget curl mutt unzip git svn nfs-utils ncurses \
+    libxml2 sqlite unixODBC libtool-ltdl libtool-ltdl \
+    libtiff libuuid jansson ImageMagick ghostscript \
+    openssl bzip2 mariadb-connector-odbc libedit libcurl libubsan lua && \
+    dnf clean all &&  \
+    groupadd  --gid 1001 asterisk && useradd --gid 1001 --uid 1001 asterisk 
+
+COPY --from=build /usr/src/install /
+
+USER asterisk
+
+CMD [ "/bin/bash" ]
+
