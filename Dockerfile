@@ -1,23 +1,34 @@
 FROM oraclelinux:8.5 as build
 
+
+ARG PSQLODBC_URL=https://ftp.postgresql.org/pub/odbc/versions/src/psqlodbc-13.02.0000.tar.gz
+ARG ASTERISK_URL=http://downloads.asterisk.org/pub/telephony/asterisk/asterisk-18-current.tar.gz
+
 RUN dnf -y in --nogpgcheck https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm && \
     yum -y groupinstall "Development Tools" && \
     dnf config-manager --set-enabled ol8_codeready_builder && \
-    dnf -y install wget curl mutt unzip  && \
+    dnf -y install wget curl mutt unzip tree  && \
     dnf -y install git svn patch gcc gcc-c++ ncurses-devel \
     libxml2-devel sqlite-devel unixODBC unixODBC-devel libtool-ltdl libtool-ltdl-devel \
     libtiff-devel libuuid-devel jansson-devel pjproject-devel ImageMagick ghostscript \
-    openssl-devel bzip2  mariadb-connector-odbc libedit-devel libcurl-devel libubsan lua lua-devel && \
+    openssl-devel bzip2  mariadb-connector-odbc libedit-devel libcurl-devel libubsan lua lua-devel \
+    libpq-devel libpq && \
     dnf clean all
 
-COPY asterisk-18-current.tar.gz /usr/src
+RUN curl -fsSL $PSQLODBC_URL -o /usr/src/psqlodbc.tar.gz \
+  && mkdir -p /usr/src/psqlodbc \
+  && tar -xf /usr/src/psqlodbc.tar.gz -C /usr/src/psqlodbc --strip-component=1 \
+  && mkdir /usr/src/psqlodbc-build-dir/ \
+  && cd /usr/src/psqlodbc && ./configure && make &&  make DESTDIR=/usr/src/psqlodbc-build-dir install \
+  && tree /usr/src/psqlodbc-build-dir
 
 WORKDIR /usr/src
 
-RUN cd /usr/src && mkdir -p /usr/src/asterisk && \
-    tar -xf asterisk-18-current.tar.gz -C ./asterisk --strip-components=1 && \
-    cd /usr/src/asterisk/ \
-    &&  ./configure NOISY_BUILD=yes --libdir=/usr/lib64 --without-dahdi --without-pri --without-gtk2 \
+RUN cd /usr/src && mkdir -p /usr/src/asterisk \
+  && curl -fsSL $ASTERISK_URL -o /usr/src/asterisk-18-current.tar.gz \
+  && tar -xf asterisk-18-current.tar.gz -C ./asterisk --strip-components=1 \
+  && cd /usr/src/asterisk/ \
+  && ./configure NOISY_BUILD=yes --libdir=/usr/lib64 --without-dahdi --without-pri --without-gtk2 \
     --without-radius --without-x11 --without-speex --with-pjproject-bundled && \
     sed -i 's/30\.30/50.50/g' menuselect/menuselect.c && make menuselect.makeopts
 
@@ -67,10 +78,12 @@ RUN dnf -y in --nogpgcheck https://dl.fedoraproject.org/pub/epel/epel-release-la
     dnf -y install wget curl mutt unzip git svn nfs-utils ncurses \
     libxml2 sqlite unixODBC libtool-ltdl libtool-ltdl \
     libtiff libuuid jansson ImageMagick ghostscript \
-    openssl bzip2 mariadb-connector-odbc libedit libcurl libubsan lua && \
+    openssl bzip2 mariadb-connector-odbc libedit libcurl libubsan lua \
+    libpq && \
     dnf clean all &&  \
     groupadd  --gid 1001 asterisk && useradd --gid 1001 --uid 1001 asterisk 
 
+COPY --from=build /usr/src/psqlodbc-build-dir /
 COPY --from=build /usr/src/install /
 
 USER asterisk
