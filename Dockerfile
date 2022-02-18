@@ -25,7 +25,7 @@ COPY prepare-menuselect.sh /usr/src/asterisk/prepare-menuselect.sh
 
 COPY options.conf /usr/src/options.conf
 
-ARG VERSION=18.9.0
+ARG VERSION=18.10.0
 
 RUN chmod +x /usr/src/asterisk/prepare-menuselect.sh && cd /usr/src/asterisk && \
     ./prepare-menuselect.sh && contrib/scripts/get_mp3_source.sh && \
