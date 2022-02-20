@@ -19,8 +19,7 @@ RUN curl -fsSL $PSQLODBC_URL -o /usr/src/psqlodbc.tar.gz \
   && mkdir -p /usr/src/psqlodbc \
   && tar -xf /usr/src/psqlodbc.tar.gz -C /usr/src/psqlodbc --strip-component=1 \
   && mkdir /usr/src/psqlodbc-build-dir/ \
-  && cd /usr/src/psqlodbc && ./configure && make &&  make DESTDIR=/usr/src/psqlodbc-build-dir install \
-  && tree /usr/src/psqlodbc-build-dir
+  && cd /usr/src/psqlodbc && ./configure --libdir=/usr/lib64 && make &&  make DESTDIR=/usr/src/psqlodbc-build-dir install
 
 WORKDIR /usr/src
 
@@ -68,7 +67,7 @@ RUN chmod +x /usr/src/asterisk/prepare-menuselect.sh && cd /usr/src/asterisk && 
     /var/spool/asterisk \
     /etc/asterisk \
     /usr/sbin/asterisk && \
-    tar xf /usr/src/install_asterisk.tar -C /usr/src/install && rm /usr/src/install_asterisk.tar && ls -al /usr/src/install
+    tar xf /usr/src/install_asterisk.tar -C /usr/src/install && rm /usr/src/install_asterisk.tar
 
 
 FROM oraclelinux:8.5
@@ -78,15 +77,16 @@ RUN dnf -y in --nogpgcheck https://dl.fedoraproject.org/pub/epel/epel-release-la
     dnf -y install wget curl mutt unzip git svn nfs-utils ncurses \
     libxml2 sqlite unixODBC libtool-ltdl libtool-ltdl \
     libtiff libuuid jansson ImageMagick ghostscript \
-    openssl bzip2 mariadb-connector-odbc libedit libcurl libubsan lua \
+    openssl tar bzip2 mariadb-connector-odbc libedit libcurl libubsan lua \
     libpq && \
     dnf clean all &&  \
     groupadd  --gid 1001 asterisk && useradd --gid 1001 --uid 1001 asterisk 
 
 COPY --from=build /usr/src/psqlodbc-build-dir /
 COPY --from=build /usr/src/install /
+COPY odbcinst.ini /etc/odbcinst.ini
 
 USER asterisk
 
-CMD [ "/bin/bash" ]
+CMD [ "/bin/bash" , "-c", "asterisk -gcvvv" ]
 
