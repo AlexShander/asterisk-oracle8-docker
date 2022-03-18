@@ -1,6 +1,6 @@
 FROM oraclelinux:8.5 as build
 
-
+ARG VERSION=18.10.0
 ARG PSQLODBC_URL=https://ftp.postgresql.org/pub/odbc/versions/src/psqlodbc-13.02.0000.tar.gz
 ARG ASTERISK_URL=http://downloads.asterisk.org/pub/telephony/asterisk/asterisk-18-current.tar.gz
 
@@ -34,8 +34,6 @@ RUN cd /usr/src && mkdir -p /usr/src/asterisk \
 COPY prepare-menuselect.sh /usr/src/asterisk/prepare-menuselect.sh
 
 COPY options.conf /usr/src/options.conf
-
-ARG VERSION=18.10.0
 
 RUN chmod +x /usr/src/asterisk/prepare-menuselect.sh && cd /usr/src/asterisk && \
     ./prepare-menuselect.sh && contrib/scripts/get_mp3_source.sh && \
