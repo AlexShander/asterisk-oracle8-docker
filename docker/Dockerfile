@@ -1,6 +1,6 @@
 FROM oraclelinux:8.5 as build
 
-ARG VERSION=18.10.0
+ARG VERSION=18.10.1
 ARG PSQLODBC_URL=https://ftp.postgresql.org/pub/odbc/versions/src/psqlodbc-13.02.0000.tar.gz
 ARG ASTERISK_URL=http://downloads.asterisk.org/pub/telephony/asterisk/asterisk-18-current.tar.gz
 
