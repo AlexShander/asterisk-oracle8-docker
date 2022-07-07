@@ -1,6 +1,6 @@
-FROM oraclelinux:8.5 as build
+FROM oraclelinux:8.6 as build
 
-ARG VERSION=18.10.1
+ARG VERSION=18.13.0
 ARG PSQLODBC_URL=https://ftp.postgresql.org/pub/odbc/versions/src/psqlodbc-13.02.0000.tar.gz
 ARG ASTERISK_URL=http://downloads.asterisk.org/pub/telephony/asterisk/asterisk-18-current.tar.gz
 
@@ -68,7 +68,7 @@ RUN chmod +x /usr/src/asterisk/prepare-menuselect.sh && cd /usr/src/asterisk && 
     tar xf /usr/src/install_asterisk.tar -C /usr/src/install && rm /usr/src/install_asterisk.tar
 
 
-FROM oraclelinux:8.5
+FROM oraclelinux:8.6
 
 RUN dnf -y in --nogpgcheck https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm && \
     dnf config-manager --set-enabled ol8_codeready_builder && \
